@@ -24,23 +24,41 @@ function ContactForm() {
   const [enteredName, setEnteredName] = useState('');
   const [enteredMessage, setEnteredMessage] = useState('');
   const [requestStatus, setRequestStatus] = useState(); // 'pending', 'success', 'error'
-  const [requestError, setRequestError] = useState();
+  const [requestError, setRequestError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [formIsValid, setFormIsValid] = useState(false);
 
   useEffect(() => {
-    if (requestStatus === 'success' || requestStatus === 'error') {
-      const timer = setTimeout(() => {
+    const identifier = setTimeout(() => {
+      if (requestStatus === 'success' || requestStatus === 'error') {
         setRequestStatus(null);
-        setRequestError(null);
-      }, 3000);
+        setRequestError('');
+      }
+    }, 3000);
 
-      return () => clearTimeout(timer);
-    }
+    return () => {
+      clearTimeout(identifier);
+    };
   }, [requestStatus]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFormIsValid(
+        enteredEmail.includes('@') && enteredMessage.trim().length > 0
+      );
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [enteredEmail, enteredMessage]);
 
   async function sendMessageHandler(event) {
     event.preventDefault();
 
-    // optional: add client-side validation
+    if (!formIsValid) {
+      return;
+    }
 
     setRequestStatus('pending');
 
@@ -55,35 +73,9 @@ function ContactForm() {
       setEnteredEmail('');
       setEnteredName('');
     } catch (error) {
-      setRequestError(error.message);
+      setRequestError(error.message || 'Something went wrong!');
       setRequestStatus('error');
     }
-  }
-
-  let notification;
-
-  if (requestStatus === 'pending') {
-    notification = {
-      status: 'pending',
-      title: 'Sending message...',
-      message: 'Your message is on its way!',
-    };
-  }
-
-  if (requestStatus === 'success') {
-    notification = {
-      status: 'success',
-      title: 'Success!',
-      message: 'Message sent successfully!',
-    };
-  }
-
-  if (requestStatus === 'error') {
-    notification = {
-      status: 'error',
-      title: 'Error!',
-      message: requestError,
-    };
   }
 
   return (
@@ -98,15 +90,20 @@ function ContactForm() {
               id='email'
               required
               value={enteredEmail}
-              onChange={(event) => setEnteredEmail(event.target.value)}
+              onChange={(event) => {
+                setEnteredEmail(event.target.value);
+                setEmailError(
+                  event.target.value.includes('@') ? '' : 'Invalid email'
+                );
+              }}
             />
+            {emailError && <p className={classes.error}>{emailError}</p>}
           </div>
           <div className={classes.control}>
             <label htmlFor='name'>Your Name</label>
             <input
               type='text'
               id='name'
-              required
               value={enteredName}
               onChange={(event) => setEnteredName(event.target.value)}
             />
@@ -124,14 +121,20 @@ function ContactForm() {
         </div>
 
         <div className={classes.actions}>
-          <button>Send Message</button>
+          <button disabled={!formIsValid}>Send Message</button>
         </div>
       </form>
-      {notification && (
+      {requestStatus && (
         <Notification
-          status={notification.status}
-          title={notification.title}
-          message={notification.message}
+          status={requestStatus}
+          title={
+            requestStatus === 'success' ? 'Success!' : 'Error!'
+          }
+          message={
+            requestStatus === 'success'
+              ? 'Message sent successfully!'
+              : requestError || 'Something went wrong!'
+          }
         />
       )}
     </section>
